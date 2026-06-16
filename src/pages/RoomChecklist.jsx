@@ -11,6 +11,7 @@ import {
   Send,
   Sparkles,
   SprayCan,
+  SquareCheckBig,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -79,6 +80,14 @@ export default function RoomChecklist() {
     );
   };
 
+  const toggleAllItems = () => {
+    setChecked((current) =>
+      current.length === checklistItems.length
+        ? []
+        : checklistItems.map((item) => item.id),
+    );
+  };
+
   const handleSubmit = async () => {
     const guestItemsComplete = (room.guestItems ?? []).every(
       (item) => itemCounts[item.id] !== "",
@@ -125,6 +134,7 @@ export default function RoomChecklist() {
   const guestItemsComplete = guestItems.every(
     (item) => itemCounts[item.id] !== "",
   );
+  const allChecklistItemsSelected = checked.length === checklistItems.length;
 
   return (
     <AppShell
@@ -140,7 +150,17 @@ export default function RoomChecklist() {
         <div className="checklist-main panel">
           <div className="checklist-heading">
             <div><span className="eyebrow">Room preparation</span><h2>Cleaning checklist</h2><p>Complete every item before submitting this room.</p></div>
-            <span className="progress-number">{checked.length}/{checklistItems.length}</span>
+            <div className="checklist-heading-actions">
+              <button
+                className="select-all-button"
+                onClick={toggleAllItems}
+                type="button"
+              >
+                <SquareCheckBig size={16} />
+                {allChecklistItemsSelected ? "Unselect all" : "Select all"}
+              </button>
+              <span className="progress-number">{checked.length}/{checklistItems.length}</span>
+            </div>
           </div>
           <div className="progress-track large"><i style={{ width: `${progress}%` }} /></div>
 

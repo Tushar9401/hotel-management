@@ -327,6 +327,9 @@ h1, h2, h3, .logo { font-family: "Manrope", sans-serif; }
 .checklist-heading { display: flex; align-items: start; justify-content: space-between; }
 .checklist-heading h2 { font-size: 22px; margin: 7px 0 5px; }
 .checklist-heading p { color: var(--muted); font-size: 12px; margin: 0; }
+.checklist-heading-actions { display: flex; align-items: center; gap: 9px; margin-left: 16px; }
+.select-all-button { min-height: 36px; border: 1px solid #d9d5ff; border-radius: 8px; padding: 0 11px; background: #fbfaff; color: var(--purple); display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-size: 12px; font-weight: 700; white-space: nowrap; transition: .18s ease; }
+.select-all-button:hover:not(:disabled) { border-color: #bdb4f4; background: var(--purple-soft); }
 .progress-number { font: 700 16px "Manrope", sans-serif; color: var(--purple); background: var(--purple-soft); padding: 9px 11px; border-radius: 10px; }
 .progress-track.large { background: #eeeef3; height: 7px; margin: 21px 0 20px; }
 .checklist-items { display: flex; flex-direction: column; gap: 10px; }
@@ -455,6 +458,8 @@ h1, h2, h3, .logo { font-family: "Manrope", sans-serif; }
   .detail-divider, .arrival-note { grid-column: 1 / -1; }
   .detail-line { margin: 3px 0; }
   .checklist-main { padding: 20px 15px; }
+  .checklist-heading { flex-direction: column; gap: 14px; }
+  .checklist-heading-actions { width: 100%; justify-content: space-between; margin-left: 0; }
   .task-copy small { max-width: 190px; }
   .guest-item-row { grid-template-columns: minmax(0, 1fr) 72px auto; }
   .guest-item-row > svg { display: none; }
