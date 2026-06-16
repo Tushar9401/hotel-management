@@ -62,7 +62,7 @@ export default function AdminDashboard() {
     [rooms, staffMembers, filter, search],
   );
 
-  const availableRooms = rooms.filter((room) => room.status === "available");
+  const assignableRooms = rooms.filter((room) => room.status !== "assigned");
   const editableRooms = rooms.filter((room) => room.status !== "completed");
   const attentionRooms = rooms.filter(
     (room) =>
@@ -134,7 +134,7 @@ export default function AdminDashboard() {
           <button
             className="button primary"
             onClick={() => navigate("/admin/assignments")}
-            disabled={!availableRooms.length}
+            disabled={!assignableRooms.length}
           >
             <Plus size={18} /> Assign room
           </button>

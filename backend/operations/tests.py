@@ -1,9 +1,11 @@
 import json
+from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
+from django.utils import timezone
 
-from .models import Room, UserProfile
+from .models import Room, RoomAssignmentLog, UserProfile
 
 
 class OperationsApiTests(TestCase):
@@ -160,6 +162,82 @@ class OperationsApiTests(TestCase):
         self.assertEqual(self.room.housekeeping_remark, "")
         self.assertFalse(self.room.attention_resolved)
 
+    def test_admin_can_reassign_completed_room_and_history_is_kept(self):
+        self.room.assigned_to = self.staff
+        assigned_at = timezone.now() - timedelta(hours=2)
+        self.room.assigned_at = assigned_at
+        self.room.submitted_at = assigned_at + timedelta(minutes=30)
+        self.room.status = Room.Status.COMPLETED
+        self.room.checklist = list(CHECKLIST_ITEMS_FOR_TEST)
+        self.room.guest_items = [
+            {
+                "id": 1,
+                "name": "Towel",
+                "expectedQuantity": 7,
+                "foundQuantity": 5,
+            }
+        ]
+        self.room.housekeeping_remark = "Two towels missing."
+        self.room.save()
+
+        new_staff = User.objects.create_user(
+            "freshstaff",
+            password="password",
+            first_name="Fresh",
+            last_name="Staff",
+        )
+        UserProfile.objects.update_or_create(
+            user=new_staff,
+            defaults={
+                "role": UserProfile.Role.ROOM_SERVICE,
+                "shift": "Evening shift",
+            },
+        )
+
+        client = Client()
+        self.login(client, "admin")
+        response = client.post(
+            "/api/rooms/101/assign/",
+            data=json.dumps({"staffId": new_staff.id}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        room = response.json()["room"]
+        self.assertEqual(room["status"], Room.Status.ASSIGNED)
+        self.assertEqual(room["assignedTo"], new_staff.id)
+        self.assertIsNone(room["submittedAt"])
+        self.assertEqual(room["remark"], "")
+        self.assertIsNone(room["guestItems"][0]["foundQuantity"])
+        self.assertEqual(len(room["assignmentHistory"]), 2)
+        previous_log = room["assignmentHistory"][1]
+        self.assertEqual(previous_log["assignedTo"], self.staff.id)
+        self.assertEqual(previous_log["guestItems"][0]["foundQuantity"], 5)
+        self.assertEqual(previous_log["remark"], "Two towels missing.")
+        self.assertEqual(
+            RoomAssignmentLog.objects.filter(
+                room=self.room,
+                status=RoomAssignmentLog.Status.COMPLETED,
+            ).count(),
+            1,
+        )
+
+    def test_admin_cannot_reassign_in_progress_room(self):
+        self.room.assigned_to = self.staff
+        self.room.status = Room.Status.ASSIGNED
+        self.room.save(update_fields=["assigned_to", "status"])
+
+        client = Client()
+        self.login(client, "admin")
+        response = client.post(
+            "/api/rooms/101/assign/",
+            data=json.dumps({"staffId": self.staff.id}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("in progress", response.json()["detail"])
+
     def test_admin_can_resolve_attention_report_and_staff_cannot(self):
         self.room.status = Room.Status.COMPLETED
         self.room.housekeeping_remark = "Missing towel"
@@ -216,3 +294,21 @@ class OperationsApiTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(forbidden.status_code, 403)
+
+
+CHECKLIST_ITEMS_FOR_TEST = [
+    "collect_dirty_items",
+    "soak_bathroom",
+    "dust_room",
+    "clean_refreshment_area",
+    "clean_dresser_tv",
+    "clean_furniture",
+    "clean_window_ac",
+    "clean_bedside_items",
+    "clean_closet_mirror",
+    "scrub_bathroom",
+    "disinfect_bathroom_floor",
+    "replace_bath_amenities",
+    "make_beds",
+    "vacuum_deodorize",
+]

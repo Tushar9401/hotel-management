@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
 
-from .models import Room, UserProfile
+from .models import Room, RoomAssignmentLog, UserProfile
 
 
 class UserProfileInline(admin.StackedInline):
@@ -49,3 +49,16 @@ class RoomAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "floor", "priority")
     search_fields = ("number", "room_type", "assigned_to__username")
+
+
+@admin.register(RoomAssignmentLog)
+class RoomAssignmentLogAdmin(admin.ModelAdmin):
+    list_display = (
+        "room",
+        "assigned_to_name",
+        "assigned_at",
+        "submitted_at",
+        "status",
+    )
+    list_filter = ("status", "assigned_at", "submitted_at")
+    search_fields = ("room__number", "assigned_to_name", "assigned_to__username")

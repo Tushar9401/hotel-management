@@ -58,3 +58,41 @@ class Room(models.Model):
 
     def __str__(self):
         return f"Room {self.number}"
+
+
+class RoomAssignmentLog(models.Model):
+    class Status(models.TextChoices):
+        ASSIGNED = "assigned", "Assigned"
+        COMPLETED = "completed", "Completed"
+
+    room = models.ForeignKey(
+        Room,
+        on_delete=models.CASCADE,
+        related_name="assignment_logs",
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="room_assignment_logs",
+    )
+    assigned_to_name = models.CharField(max_length=150, blank=True, default="")
+    assigned_to_initials = models.CharField(max_length=10, blank=True, default="")
+    assigned_to_shift = models.CharField(max_length=50, blank=True, default="")
+    assigned_at = models.DateTimeField()
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ASSIGNED,
+    )
+    checklist = models.JSONField(default=list, blank=True)
+    guest_items = models.JSONField(default=list, blank=True)
+    housekeeping_remark = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-assigned_at", "-id"]
+
+    def __str__(self):
+        return f"{self.room} assigned to {self.assigned_to_name or 'Unknown'}"

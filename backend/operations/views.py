@@ -9,7 +9,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-from .models import Room, UserProfile
+from .models import Room, RoomAssignmentLog, UserProfile
 
 CHECKLIST_ITEMS = {
     "collect_dirty_items",
@@ -51,6 +51,33 @@ def user_payload(user):
     }
 
 
+def user_display_snapshot(user):
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    full_name = user.get_full_name().strip() or user.username
+    initials = "".join(part[0] for part in full_name.split()[:2]).upper()
+    return {
+        "name": full_name,
+        "initials": initials,
+        "shift": profile.shift,
+    }
+
+
+def assignment_log_payload(log):
+    return {
+        "id": log.id,
+        "assignedTo": log.assigned_to_id,
+        "assignedToName": log.assigned_to_name,
+        "assignedToInitials": log.assigned_to_initials,
+        "assignedToShift": log.assigned_to_shift,
+        "assignedAt": log.assigned_at.isoformat() if log.assigned_at else None,
+        "submittedAt": log.submitted_at.isoformat() if log.submitted_at else None,
+        "status": log.status,
+        "checklist": log.checklist,
+        "guestItems": log.guest_items,
+        "remark": log.housekeeping_remark,
+    }
+
+
 def room_payload(room):
     return {
         "id": room.number,
@@ -66,6 +93,10 @@ def room_payload(room):
         "guestItems": room.guest_items,
         "remark": room.housekeeping_remark,
         "attentionResolved": room.attention_resolved,
+        "assignmentHistory": [
+            assignment_log_payload(log)
+            for log in room.assignment_logs.all()
+        ],
     }
 
 
@@ -95,6 +126,67 @@ def validate_guest_items(items):
             }
         )
     return guest_items, None
+
+
+def current_assignment_log(room):
+    if not room.assigned_at:
+        return None
+    return room.assignment_logs.filter(assigned_at=room.assigned_at).first()
+
+
+def create_assignment_log(room, staff_user, assigned_at):
+    snapshot = user_display_snapshot(staff_user)
+    return RoomAssignmentLog.objects.create(
+        room=room,
+        assigned_to=staff_user,
+        assigned_to_name=snapshot["name"],
+        assigned_to_initials=snapshot["initials"],
+        assigned_to_shift=snapshot["shift"],
+        assigned_at=assigned_at,
+        status=RoomAssignmentLog.Status.ASSIGNED,
+        checklist=[],
+        guest_items=room.guest_items,
+        housekeeping_remark="",
+    )
+
+
+def reset_found_quantities(guest_items):
+    return [
+        {
+            **item,
+            "foundQuantity": None,
+        }
+        for item in guest_items
+    ]
+
+
+def archive_current_room_state(room):
+    if not room.assigned_to or not room.assigned_at:
+        return None
+
+    log = current_assignment_log(room)
+    if log is None:
+        snapshot = user_display_snapshot(room.assigned_to)
+        log = RoomAssignmentLog(
+            room=room,
+            assigned_to=room.assigned_to,
+            assigned_to_name=snapshot["name"],
+            assigned_to_initials=snapshot["initials"],
+            assigned_to_shift=snapshot["shift"],
+            assigned_at=room.assigned_at,
+        )
+
+    log.submitted_at = room.submitted_at
+    log.status = (
+        RoomAssignmentLog.Status.COMPLETED
+        if room.status == Room.Status.COMPLETED
+        else RoomAssignmentLog.Status.ASSIGNED
+    )
+    log.checklist = room.checklist
+    log.guest_items = room.guest_items
+    log.housekeeping_remark = room.housekeeping_remark
+    log.save()
+    return log
 
 
 @require_GET
@@ -142,7 +234,10 @@ def me_view(request):
 @login_required
 def rooms_view(request):
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
-    rooms = Room.objects.select_related("assigned_to", "assigned_to__profile")
+    rooms = Room.objects.select_related(
+        "assigned_to",
+        "assigned_to__profile",
+    ).prefetch_related("assignment_logs")
     if profile.role == UserProfile.Role.ROOM_SERVICE:
         rooms = rooms.filter(assigned_to=request.user)
     return JsonResponse({"rooms": [room_payload(room) for room in rooms]})
@@ -181,17 +276,24 @@ def assign_room_view(request, room_number):
         user__is_active=True,
     )
     room = get_object_or_404(Room, number=room_number)
-    if room.status != Room.Status.AVAILABLE:
-        return JsonResponse({"detail": "Only available rooms can be assigned."}, status=409)
+    if room.status == Room.Status.ASSIGNED:
+        return JsonResponse(
+            {"detail": "Rooms in progress cannot be assigned again."},
+            status=409,
+        )
 
+    archive_current_room_state(room)
+    assigned_at = timezone.now()
     room.assigned_to = staff_profile.user
-    room.assigned_at = timezone.now()
+    room.assigned_at = assigned_at
     room.submitted_at = None
     room.checklist = []
+    room.guest_items = reset_found_quantities(room.guest_items)
     room.housekeeping_remark = ""
     room.attention_resolved = False
     room.status = Room.Status.ASSIGNED
     room.save()
+    create_assignment_log(room, staff_profile.user, assigned_at)
     return JsonResponse({"room": room_payload(room)})
 
 
@@ -304,4 +406,5 @@ def submit_checklist_view(request, room_number):
     room.submitted_at = timezone.now()
     room.status = Room.Status.COMPLETED
     room.save()
+    archive_current_room_state(room)
     return JsonResponse({"room": room_payload(room)})

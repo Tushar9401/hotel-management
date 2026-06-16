@@ -3,6 +3,7 @@ import {
   ChevronDown,
   Clock3,
   DoorOpen,
+  History,
   Plus,
   Search,
   UserRound,
@@ -26,6 +27,7 @@ export default function AdminAssignments() {
   const [roomId, setRoomId] = useState("");
   const [staffId, setStaffId] = useState("");
   const [assignmentError, setAssignmentError] = useState("");
+  const [historyRoom, setHistoryRoom] = useState(null);
 
   useEffect(() => {
     if (!staffId && staffMembers.length) {
@@ -34,6 +36,7 @@ export default function AdminAssignments() {
   }, [staffId, staffMembers]);
 
   const availableRooms = rooms.filter((room) => room.status === "available");
+  const assignableRooms = rooms.filter((room) => room.status !== "assigned");
   const filteredRooms = useMemo(
     () =>
       rooms.filter((room) => {
@@ -48,7 +51,7 @@ export default function AdminAssignments() {
   );
 
   const openAssign = (selectedRoom = "") => {
-    setRoomId(selectedRoom || availableRooms[0]?.id || "");
+    setRoomId(selectedRoom || assignableRooms[0]?.id || "");
     setStaffId((current) => current || String(staffMembers[0]?.id ?? ""));
     setAssignmentError("");
     setModalOpen(true);
@@ -74,7 +77,7 @@ export default function AdminAssignments() {
         <button
           className="button primary"
           onClick={() => openAssign()}
-          disabled={!availableRooms.length}
+          disabled={!assignableRooms.length}
         >
           <Plus size={18} /> Assign room
         </button>
@@ -141,6 +144,7 @@ export default function AdminAssignments() {
           </div>
           {filteredRooms.map((room) => {
             const staff = staffMembers.find((member) => member.id === room.assignedTo);
+            const hasHistory = (room.assignmentHistory ?? []).length > 0;
             return (
               <div className="table-row" key={room.id}>
                 <div className="room-cell">
@@ -185,9 +189,17 @@ export default function AdminAssignments() {
                   )}
                 </div>
                 <div className="row-action">
-                  {room.status === "available" && (
+                  {room.status !== "assigned" && (
                     <button className="button text-button" onClick={() => openAssign(room.id)}>
                       Assign
+                    </button>
+                  )}
+                  {hasHistory && (
+                    <button
+                      className="button secondary compact-button"
+                      onClick={() => setHistoryRoom(room)}
+                    >
+                      <History size={15} /> History
                     </button>
                   )}
                 </div>
@@ -202,7 +214,7 @@ export default function AdminAssignments() {
 
       {modalOpen && (
         <AssignmentModal
-          availableRooms={availableRooms}
+          assignableRooms={assignableRooms}
           staffMembers={staffMembers}
           roomId={roomId}
           staffId={staffId}
@@ -211,6 +223,12 @@ export default function AdminAssignments() {
           error={assignmentError}
           onClose={() => setModalOpen(false)}
           onSubmit={handleAssign}
+        />
+      )}
+      {historyRoom && (
+        <HistoryModal
+          room={historyRoom}
+          onClose={() => setHistoryRoom(null)}
         />
       )}
     </AppShell>
@@ -237,7 +255,7 @@ function StatusBadge({ status }) {
 }
 
 function AssignmentModal({
-  availableRooms,
+  assignableRooms,
   staffMembers,
   roomId,
   staffId,
@@ -254,7 +272,7 @@ function AssignmentModal({
           <div>
             <span className="eyebrow">New assignment</span>
             <h2>Assign a room</h2>
-            <p>Choose an available room and a staff member.</p>
+            <p>Choose an unassigned or completed room and a staff member.</p>
           </div>
           <button type="button" className="icon-button" onClick={onClose}>
             <X size={20} />
@@ -263,9 +281,9 @@ function AssignmentModal({
         <label className="field">
           <span>Room</span>
           <select value={roomId} onChange={(event) => setRoomId(event.target.value)}>
-            {availableRooms.map((room) => (
+            {assignableRooms.map((room) => (
               <option value={room.id} key={room.id}>
-                Room {room.id}{room.type ? ` · ${room.type}` : ""}
+                Room {room.id}{room.type ? ` · ${room.type}` : ""} · {getStatusLabel(room.status)}
               </option>
             ))}
           </select>
@@ -301,6 +319,68 @@ function AssignmentModal({
   );
 }
 
+function HistoryModal({ room, onClose }) {
+  const logs = room.assignmentHistory ?? [];
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <div className="modal history-modal" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="modal-heading">
+          <div>
+            <span className="eyebrow">Assignment history</span>
+            <h2>Room {room.id}</h2>
+            <p>Previous staff assignments and guest-item discrepancies.</p>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose}>
+            <X size={20} />
+          </button>
+        </div>
+        <div className="history-list">
+          {logs.map((log) => {
+            const missingItems = getMissingItems(log);
+            return (
+              <article className="history-entry" key={log.id}>
+                <div className="history-entry-head">
+                  <span className="avatar small">{log.assignedToInitials || "?"}</span>
+                  <span>
+                    <strong>{log.assignedToName || "Unknown staff"}</strong>
+                    <small>{log.assignedToShift || "Room service"}</small>
+                  </span>
+                  <StatusBadge status={log.status} />
+                </div>
+                <div className="history-times">
+                  <span>Assigned {formatTime(log.assignedAt)}</span>
+                  <span>
+                    {log.submittedAt ? `Submitted ${formatTime(log.submittedAt)}` : "Not submitted yet"}
+                  </span>
+                </div>
+                {missingItems.length ? (
+                  <div className="history-missing">
+                    <span className="report-label">Missing earlier</span>
+                    {missingItems.map((item) => (
+                      <div className="missing-item" key={item.id}>
+                        <strong>{item.name}</strong>
+                        <span>{item.missingQuantity} missing</span>
+                        <small>
+                          Expected {item.expectedQuantity}, found {item.foundQuantity}
+                        </small>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="history-clear">No missing guest items recorded.</p>
+                )}
+                {log.remark && (
+                  <p className="history-remark">{log.remark}</p>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function getGuestItemSummary(room) {
   const items = room.guestItems ?? [];
   if (!items.length) return room.status === "completed"
@@ -315,4 +395,17 @@ function getGuestItemSummary(room) {
   return discrepancies
     ? `${discrepancies} item ${discrepancies === 1 ? "discrepancy" : "discrepancies"}`
     : "All guest items matched";
+}
+
+function getStatusLabel(status) {
+  return status === "completed" ? "Completed" : status === "assigned" ? "In progress" : "Unassigned";
+}
+
+function getMissingItems(source) {
+  return (source.guestItems ?? [])
+    .filter((item) => item.foundQuantity !== null && item.foundQuantity < item.expectedQuantity)
+    .map((item) => ({
+      ...item,
+      missingQuantity: item.expectedQuantity - item.foundQuantity,
+    }));
 }
