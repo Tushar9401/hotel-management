@@ -9,6 +9,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import { useHotel } from "../context/HotelContext";
+import { isToday } from "../dateUtils";
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export default function StaffDashboard() {
     (room) => room.status === "assigned",
   );
   const completedRooms = rooms.filter(
-    (room) => room.status === "completed",
+    (room) => room.status === "completed" && isToday(room.submittedAt),
   );
 
   return (

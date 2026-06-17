@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import GuestItemsEditor from "../components/GuestItemsEditor";
 import { useHotel } from "../context/HotelContext";
+import { isToday } from "../dateUtils";
 
 const formatTime = (date) =>
   new Intl.DateTimeFormat("en", {
@@ -45,7 +46,9 @@ export default function AdminDashboard() {
   const stats = {
     total: rooms.length,
     assigned: rooms.filter((room) => room.status === "assigned").length,
-    completed: rooms.filter((room) => room.status === "completed").length,
+    completed: rooms.filter(
+      (room) => room.status === "completed" && isToday(room.submittedAt),
+    ).length,
     available: rooms.filter((room) => room.status === "available").length,
   };
 

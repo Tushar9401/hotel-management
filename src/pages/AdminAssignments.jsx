@@ -12,6 +12,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import AppShell from "../components/AppShell";
 import { useHotel } from "../context/HotelContext";
+import { isToday } from "../dateUtils";
 
 const formatTime = (date) =>
   new Intl.DateTimeFormat("en", {
@@ -94,7 +95,12 @@ export default function AdminAssignments() {
         <SummaryCard
           icon={CheckCircle2}
           label="Completed"
-          value={rooms.filter((room) => room.status === "completed").length}
+          value={
+            rooms.filter(
+              (room) =>
+                room.status === "completed" && isToday(room.submittedAt),
+            ).length
+          }
           detail="Submitted today"
           tone="green"
         />

@@ -10,6 +10,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import { useHotel } from "../context/HotelContext";
+import { isToday } from "../dateUtils";
 
 export default function AdminStaff() {
   const navigate = useNavigate();
@@ -24,7 +25,10 @@ export default function AdminStaff() {
             (room) => room.assignedTo === staff.id && room.status === "assigned",
           );
           const completed = rooms.filter(
-            (room) => room.assignedTo === staff.id && room.status === "completed",
+            (room) =>
+              room.assignedTo === staff.id &&
+              room.status === "completed" &&
+              isToday(room.submittedAt),
           );
           return { ...staff, assigned, completed };
         })
