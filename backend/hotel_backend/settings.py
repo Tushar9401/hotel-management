@@ -1,10 +1,33 @@
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "roomly-development-secret-key"
-DEBUG = True
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+if DEBUG:
+    SECRET_KEY = os.environ.get(
+        "DJANGO_SECRET_KEY",
+        "roomly-development-only-change-this-key",
+    )
+else:
+    SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+
+ALLOWED_HOSTS = [
+    "hotel.bright-core-solutions.com",
+    "104.248.52.151",
+    "127.0.0.1",
+    "localhost",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://hotel.bright-core-solutions.com",
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -60,8 +83,15 @@ TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
+# Nginx terminates HTTPS and forwards the original protocol to Django.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_SSL_REDIRECT = not DEBUG
