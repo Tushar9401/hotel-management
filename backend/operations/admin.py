@@ -42,12 +42,13 @@ class RoomAdmin(admin.ModelAdmin):
         "number",
         "room_type",
         "floor",
+        "assignment_type",
         "status",
         "assigned_to",
         "assigned_at",
         "submitted_at",
     )
-    list_filter = ("status", "floor", "priority")
+    list_filter = ("status", "assignment_type", "floor", "priority")
     search_fields = ("number", "room_type", "assigned_to__username")
 
 
@@ -58,7 +59,8 @@ class RoomAssignmentLogAdmin(admin.ModelAdmin):
         "assigned_to_name",
         "assigned_at",
         "submitted_at",
+        "assignment_type",
         "status",
     )
-    list_filter = ("status", "assigned_at", "submitted_at")
+    list_filter = ("status", "assignment_type", "assigned_at", "submitted_at")
     search_fields = ("room__number", "assigned_to_name", "assigned_to__username")

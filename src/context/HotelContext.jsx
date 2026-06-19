@@ -74,10 +74,10 @@ export function HotelProvider({ children }) {
     }
   }, []);
 
-  const assignRoom = useCallback(async (roomId, staffId) => {
+  const assignRoom = useCallback(async (roomId, staffId, assignmentType) => {
     const { room } = await apiRequest(`/rooms/${roomId}/assign/`, {
       method: "POST",
-      body: JSON.stringify({ staffId }),
+      body: JSON.stringify({ staffId, assignmentType }),
     });
     setRooms((current) =>
       current.map((item) => (item.id === room.id ? room : item)),

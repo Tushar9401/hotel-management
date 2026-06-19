@@ -53,9 +53,14 @@ export default function StaffDashboard() {
                 <span className="room-label">Room</span>
                 <h3>{room.id}</h3>
               </div>
-              <span className={`priority ${room.priority === "Priority" ? "high" : ""}`}>
-                {room.priority}
-              </span>
+              <div className="room-card-badges">
+                <span className={`service-type ${room.assignmentType === "stayover" ? "stayover" : "checkout"}`}>
+                  {room.assignmentType === "stayover" ? "Stayover" : "Checkout"}
+                </span>
+                <span className={`priority ${room.priority === "Priority" ? "high" : ""}`}>
+                  {room.priority}
+                </span>
+              </div>
             </div>
             <div className="room-type">{room.type || "Standard room"}</div>
             <div className="room-meta">
@@ -63,7 +68,14 @@ export default function StaffDashboard() {
             </div>
             <div className="guest-note">
               <DoorOpen size={18} />
-              <span><small>Guest status</small><strong>{room.guest}</strong></span>
+              <span>
+                <small>Service</small>
+                <strong>
+                  {room.assignmentType === "stayover"
+                    ? "Stayover · Select only required tasks"
+                    : "Checkout · All 14 tasks required"}
+                </strong>
+              </span>
             </div>
             <button className="button primary full" onClick={() => navigate(`/staff/room/${room.id}`)}>
               Start room checklist <ArrowRight size={18} />
@@ -88,7 +100,10 @@ export default function StaffDashboard() {
             {completedRooms.map((room) => (
               <div className="completed-row" key={room.id}>
                 <span className="complete-check"><CheckCircle2 size={20} /></span>
-                <span><strong>Room {room.id}</strong><small>{room.type || "Standard room"}</small></span>
+                <span>
+                  <strong>Room {room.id}</strong>
+                  <small>{room.type || "Standard room"} · {room.assignmentType === "stayover" ? "Stayover" : "Checkout"}</small>
+                </span>
                 <span className="submitted-time">
                   Submitted {new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(room.submittedAt))}
                 </span>

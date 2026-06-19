@@ -9,7 +9,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-from .models import Room, RoomAssignmentLog, UserProfile
+from .models import AssignmentType, Room, RoomAssignmentLog, UserProfile
 
 CHECKLIST_ITEMS = {
     "collect_dirty_items",
@@ -71,6 +71,7 @@ def assignment_log_payload(log):
         "assignedToShift": log.assigned_to_shift,
         "assignedAt": log.assigned_at.isoformat() if log.assigned_at else None,
         "submittedAt": log.submitted_at.isoformat() if log.submitted_at else None,
+        "assignmentType": log.assignment_type,
         "status": log.status,
         "checklist": log.checklist,
         "guestItems": log.guest_items,
@@ -89,6 +90,7 @@ def room_payload(room):
         "submittedAt": room.submitted_at.isoformat() if room.submitted_at else None,
         "priority": room.priority,
         "guest": room.guest_status,
+        "assignmentType": room.assignment_type,
         "checklist": room.checklist,
         "guestItems": room.guest_items,
         "remark": room.housekeeping_remark,
@@ -143,6 +145,7 @@ def create_assignment_log(room, staff_user, assigned_at):
         assigned_to_initials=snapshot["initials"],
         assigned_to_shift=snapshot["shift"],
         assigned_at=assigned_at,
+        assignment_type=room.assignment_type,
         status=RoomAssignmentLog.Status.ASSIGNED,
         checklist=[],
         guest_items=room.guest_items,
@@ -177,6 +180,7 @@ def archive_current_room_state(room):
         )
 
     log.submitted_at = room.submitted_at
+    log.assignment_type = room.assignment_type
     log.status = (
         RoomAssignmentLog.Status.COMPLETED
         if room.status == Room.Status.COMPLETED
@@ -269,6 +273,13 @@ def assign_room_view(request, room_number):
     if payload is None:
         return JsonResponse({"detail": "Invalid JSON."}, status=400)
 
+    assignment_type = payload.get("assignmentType", AssignmentType.CHECKOUT)
+    if assignment_type not in AssignmentType.values:
+        return JsonResponse(
+            {"detail": "Choose either Checkout or Stayover service."},
+            status=400,
+        )
+
     staff_profile = get_object_or_404(
         UserProfile.objects.select_related("user"),
         user_id=payload.get("staffId"),
@@ -287,6 +298,7 @@ def assign_room_view(request, room_number):
     room.assigned_to = staff_profile.user
     room.assigned_at = assigned_at
     room.submitted_at = None
+    room.assignment_type = assignment_type
     room.checklist = []
     room.guest_items = reset_found_quantities(room.guest_items)
     room.housekeeping_remark = ""
@@ -361,7 +373,17 @@ def submit_checklist_view(request, room_number):
     if payload is None:
         return JsonResponse({"detail": "Invalid JSON."}, status=400)
     checklist = payload.get("checklist", [])
-    if set(checklist) != CHECKLIST_ITEMS:
+    if not isinstance(checklist, list):
+        return JsonResponse({"detail": "Checklist must be a list."}, status=400)
+
+    selected_items = set(checklist)
+    if len(selected_items) != len(checklist) or not selected_items.issubset(CHECKLIST_ITEMS):
+        return JsonResponse({"detail": "The checklist contains invalid tasks."}, status=400)
+
+    if (
+        room.assignment_type == AssignmentType.CHECKOUT
+        and selected_items != CHECKLIST_ITEMS
+    ):
         return JsonResponse({"detail": "All checklist items must be completed."}, status=400)
 
     remark = str(payload.get("remark", "")).strip()

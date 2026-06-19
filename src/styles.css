@@ -296,6 +296,10 @@ h1, h2, h3, .logo { font-family: "Manrope", sans-serif; }
 .room-card { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 21px; box-shadow: 0 5px 16px rgba(20,29,48,.04); transition: .2s ease; }
 .room-card:hover { transform: translateY(-2px); border-color: #d4d9e2; box-shadow: var(--shadow); }
 .room-card-top { display: flex; align-items: start; justify-content: space-between; }
+.room-card-badges, .detail-badges { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+.service-type { width: fit-content; border-radius: 99px; padding: 6px 9px; font-size: 9px; font-weight: 800; }
+.service-type.checkout { color: #2e5f9f; background: #eaf3ff; }
+.service-type.stayover { color: #2d7961; background: #e9f8f1; }
 .room-label { color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-size: 9px; font-weight: 700; }
 .room-card h3 { font-size: 32px; margin: 2px 0 0; letter-spacing: -1px; }
 .priority { width: fit-content; border-radius: 99px; padding: 6px 9px; color: #676d7b; background: #f0f1f4; font-size: 9px; font-weight: 700; }
@@ -453,7 +457,7 @@ h1, h2, h3, .logo { font-family: "Manrope", sans-serif; }
   .room-card-grid { grid-template-columns: 1fr; }
   .checklist-layout { grid-template-columns: 1fr; }
   .room-detail-card { grid-row: 1; position: static; display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; }
-  .room-detail-card .priority { grid-column: 1 / -1; }
+  .room-detail-card .detail-badges { grid-column: 1 / -1; justify-content: flex-start; }
   .detail-room-label { margin-top: 18px; }
   .detail-divider, .arrival-note { grid-column: 1 / -1; }
   .detail-line { margin: 3px 0; }

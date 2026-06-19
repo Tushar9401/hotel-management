@@ -2,6 +2,11 @@ from django.conf import settings
 from django.db import models
 
 
+class AssignmentType(models.TextChoices):
+    CHECKOUT = "checkout", "Checkout"
+    STAYOVER = "stayover", "Stayover"
+
+
 class UserProfile(models.Model):
     class Role(models.TextChoices):
         ADMIN = "admin", "Front Desk Admin"
@@ -34,6 +39,11 @@ class Room(models.Model):
     floor = models.CharField(max_length=50)
     priority = models.CharField(max_length=20, default="Standard")
     guest_status = models.CharField(max_length=150, blank=True)
+    assignment_type = models.CharField(
+        max_length=20,
+        choices=AssignmentType.choices,
+        default=AssignmentType.CHECKOUT,
+    )
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -82,6 +92,11 @@ class RoomAssignmentLog(models.Model):
     assigned_to_shift = models.CharField(max_length=50, blank=True, default="")
     assigned_at = models.DateTimeField()
     submitted_at = models.DateTimeField(null=True, blank=True)
+    assignment_type = models.CharField(
+        max_length=20,
+        choices=AssignmentType.choices,
+        default=AssignmentType.CHECKOUT,
+    )
     status = models.CharField(
         max_length=20,
         choices=Status.choices,

@@ -27,6 +27,7 @@ export default function AdminAssignments() {
   const [modalOpen, setModalOpen] = useState(false);
   const [roomId, setRoomId] = useState("");
   const [staffId, setStaffId] = useState("");
+  const [assignmentType, setAssignmentType] = useState("checkout");
   const [assignmentError, setAssignmentError] = useState("");
   const [historyRoom, setHistoryRoom] = useState(null);
 
@@ -54,6 +55,7 @@ export default function AdminAssignments() {
   const openAssign = (selectedRoom = "") => {
     setRoomId(selectedRoom || assignableRooms[0]?.id || "");
     setStaffId((current) => current || String(staffMembers[0]?.id ?? ""));
+    setAssignmentType("checkout");
     setAssignmentError("");
     setModalOpen(true);
   };
@@ -62,7 +64,7 @@ export default function AdminAssignments() {
     event.preventDefault();
     if (!roomId || !staffId) return;
     try {
-      await assignRoom(roomId, staffId);
+      await assignRoom(roomId, staffId, assignmentType);
       setModalOpen(false);
     } catch (requestError) {
       setAssignmentError(requestError.message);
@@ -180,12 +182,12 @@ export default function AdminAssignments() {
                   {room.status === "completed" ? (
                     <>
                       <strong>Submitted at {formatTime(room.submittedAt)}</strong>
-                      <small>{getGuestItemSummary(room)}</small>
+                      <small>{getAssignmentTypeLabel(room.assignmentType)} · {getGuestItemSummary(room)}</small>
                     </>
                   ) : room.status === "assigned" ? (
                     <>
                       <strong>Assigned at {formatTime(room.assignedAt)}</strong>
-                      <small>{getGuestItemSummary(room)}</small>
+                      <small>{getAssignmentTypeLabel(room.assignmentType)} · {getGuestItemSummary(room)}</small>
                     </>
                   ) : (
                     <>
@@ -224,8 +226,10 @@ export default function AdminAssignments() {
           staffMembers={staffMembers}
           roomId={roomId}
           staffId={staffId}
+          assignmentType={assignmentType}
           setRoomId={setRoomId}
           setStaffId={setStaffId}
+          setAssignmentType={setAssignmentType}
           error={assignmentError}
           onClose={() => setModalOpen(false)}
           onSubmit={handleAssign}
@@ -265,8 +269,10 @@ function AssignmentModal({
   staffMembers,
   roomId,
   staffId,
+  assignmentType,
   setRoomId,
   setStaffId,
+  setAssignmentType,
   error,
   onClose,
   onSubmit,
@@ -302,9 +308,23 @@ function AssignmentModal({
             ))}
           </select>
         </label>
+        <label className="field">
+          <span>Service type</span>
+          <select
+            value={assignmentType}
+            onChange={(event) => setAssignmentType(event.target.value)}
+          >
+            <option value="checkout">Checkout — all 14 tasks required</option>
+            <option value="stayover">Stayover — complete only needed tasks</option>
+          </select>
+        </label>
         <div className="assignment-preview">
           <UserRound size={20} />
-          <span>The room will appear immediately in the staff member’s workspace.</span>
+          <span>
+            {assignmentType === "checkout"
+              ? "Checkout service requires the staff member to complete all 14 tasks."
+              : "Stayover service lets the staff member submit only the tasks needed for the room."}
+          </span>
         </div>
         {error && <p className="modal-error">{error}</p>}
         <div className="modal-actions">
@@ -349,7 +369,9 @@ function HistoryModal({ room, onClose }) {
                   <span className="avatar small">{log.assignedToInitials || "?"}</span>
                   <span>
                     <strong>{log.assignedToName || "Unknown staff"}</strong>
-                    <small>{log.assignedToShift || "Room service"}</small>
+                    <small>
+                      {log.assignedToShift || "Room service"} · {getAssignmentTypeLabel(log.assignmentType)}
+                    </small>
                   </span>
                   <StatusBadge status={log.status} />
                 </div>
@@ -405,6 +427,10 @@ function getGuestItemSummary(room) {
 
 function getStatusLabel(status) {
   return status === "completed" ? "Completed" : status === "assigned" ? "In progress" : "Unassigned";
+}
+
+function getAssignmentTypeLabel(assignmentType) {
+  return assignmentType === "stayover" ? "Stayover" : "Checkout";
 }
 
 function getMissingItems(source) {

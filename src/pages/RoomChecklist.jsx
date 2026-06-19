@@ -71,6 +71,7 @@ export default function RoomChecklist() {
   }, [room]);
 
   if (!room) return <NavigateBack navigate={navigate} />;
+  const isStayover = room.assignmentType === "stayover";
 
   const toggleItem = (itemId) => {
     setChecked((current) =>
@@ -92,7 +93,7 @@ export default function RoomChecklist() {
     const guestItemsComplete = (room.guestItems ?? []).every(
       (item) => itemCounts[item.id] !== "",
     );
-    if (checked.length !== checklistItems.length || !guestItemsComplete) return;
+    if ((!isStayover && checked.length !== checklistItems.length) || !guestItemsComplete) return;
     try {
       await submitChecklist(
         room.id,
@@ -118,7 +119,7 @@ export default function RoomChecklist() {
           <h2>Room {room.id} is ready</h2>
           <p>The front desk has been notified and can see your submission time.</p>
           <div className="success-details">
-            <span><strong>{checklistItems.length} of {checklistItems.length}</strong><small>Tasks complete</small></span>
+            <span><strong>{checked.length} of {checklistItems.length}</strong><small>Tasks complete</small></span>
             <span><strong>{new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date())}</strong><small>Submitted at</small></span>
           </div>
           <button className="button primary" onClick={() => navigate("/staff")}>
@@ -149,7 +150,15 @@ export default function RoomChecklist() {
       <section className="checklist-layout">
         <div className="checklist-main panel">
           <div className="checklist-heading">
-            <div><span className="eyebrow">Room preparation</span><h2>Cleaning checklist</h2><p>Complete every item before submitting this room.</p></div>
+            <div>
+              <span className="eyebrow">{isStayover ? "Stayover service" : "Checkout service"}</span>
+              <h2>Cleaning checklist</h2>
+              <p>
+                {isStayover
+                  ? "Select and complete only the tasks needed for this stayover room."
+                  : "Complete every item before submitting this checkout room."}
+              </p>
+            </div>
             <div className="checklist-heading-actions">
               <button
                 className="select-all-button"
@@ -251,29 +260,41 @@ export default function RoomChecklist() {
           <button
             className="button primary full submit-button"
             disabled={
-              checked.length !== checklistItems.length || !guestItemsComplete
+              (!isStayover && checked.length !== checklistItems.length) ||
+              !guestItemsComplete
             }
             onClick={handleSubmit}
           >
             <Send size={18} /> Submit room checklist
           </button>
-          {checked.length !== checklistItems.length && (
+          {!isStayover && checked.length !== checklistItems.length && (
             <p className="submit-help">Complete all {checklistItems.length} tasks to submit this room.</p>
           )}
-          {checked.length === checklistItems.length && !guestItemsComplete && (
+          {isStayover && (
+            <p className="submit-help">Stayover service: submit after selecting the tasks completed for this room.</p>
+          )}
+          {(isStayover || checked.length === checklistItems.length) && !guestItemsComplete && (
             <p className="submit-help">Enter the quantity found for every guest item.</p>
           )}
           {submitError && <p className="modal-error">{submitError}</p>}
         </div>
 
         <aside className="room-detail-card panel">
-          <span className={`priority ${room.priority === "Priority" ? "high" : ""}`}>{room.priority}</span>
+          <div className="detail-badges">
+            <span className={`service-type ${isStayover ? "stayover" : "checkout"}`}>
+              {isStayover ? "Stayover" : "Checkout"}
+            </span>
+            <span className={`priority ${room.priority === "Priority" ? "high" : ""}`}>{room.priority}</span>
+          </div>
           <span className="detail-room-label">Room</span>
           <strong className="detail-room-number">{room.id}</strong>
           <span className="detail-type">{room.type || "Standard room"}</span>
           <div className="detail-divider" />
           <div className="detail-line"><MapPin size={18} /><span><small>Location</small><strong>{room.floor}</strong></span></div>
-          <div className="arrival-note"><span>Guest arrival</span><strong>{room.guest.replace("Arrival at ", "")}</strong></div>
+          <div className="arrival-note">
+            <span>Service requirement</span>
+            <strong>{isStayover ? "Only selected tasks required" : "All 14 tasks required"}</strong>
+          </div>
         </aside>
       </section>
     </AppShell>

@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.utils import timezone
 
-from .models import Room, RoomAssignmentLog, UserProfile
+from .models import AssignmentType, Room, RoomAssignmentLog, UserProfile
 
 
 class OperationsApiTests(TestCase):
@@ -60,6 +60,10 @@ class OperationsApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["room"]["guestItems"][0]["expectedQuantity"], 7)
+        self.assertEqual(
+            response.json()["room"]["assignmentType"],
+            AssignmentType.CHECKOUT,
+        )
 
         second_room = Room.objects.create(
             number="102",
@@ -140,6 +144,89 @@ class OperationsApiTests(TestCase):
             self.room.housekeeping_remark,
             "One towel was not found in the bathroom.",
         )
+
+    def test_stayover_assignment_accepts_partial_checklist(self):
+        admin_client = Client()
+        self.login(admin_client, "admin")
+        assignment = admin_client.post(
+            "/api/rooms/101/assign/",
+            data=json.dumps(
+                {
+                    "staffId": self.staff.id,
+                    "assignmentType": AssignmentType.STAYOVER,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(assignment.status_code, 200)
+        self.assertEqual(
+            assignment.json()["room"]["assignmentType"],
+            AssignmentType.STAYOVER,
+        )
+
+        staff_client = Client()
+        self.login(staff_client, "staff")
+        response = staff_client.post(
+            "/api/rooms/101/submit/",
+            data=json.dumps(
+                {
+                    "checklist": ["make_beds", "replace_bath_amenities"],
+                    "guestItems": [{"foundQuantity": 7}],
+                    "remark": "",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["room"]["checklist"],
+            ["make_beds", "replace_bath_amenities"],
+        )
+        self.assertEqual(
+            response.json()["room"]["assignmentHistory"][0]["assignmentType"],
+            AssignmentType.STAYOVER,
+        )
+
+    def test_checkout_assignment_rejects_partial_checklist(self):
+        self.room.assigned_to = self.staff
+        self.room.assignment_type = AssignmentType.CHECKOUT
+        self.room.status = Room.Status.ASSIGNED
+        self.room.save()
+
+        client = Client()
+        self.login(client, "staff")
+        response = client.post(
+            "/api/rooms/101/submit/",
+            data=json.dumps(
+                {
+                    "checklist": ["make_beds"],
+                    "guestItems": [{"foundQuantity": 7}],
+                    "remark": "",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("All checklist items", response.json()["detail"])
+
+    def test_admin_must_choose_valid_assignment_type(self):
+        client = Client()
+        self.login(client, "admin")
+        response = client.post(
+            "/api/rooms/101/assign/",
+            data=json.dumps(
+                {
+                    "staffId": self.staff.id,
+                    "assignmentType": "deep-clean",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Checkout or Stayover", response.json()["detail"])
 
     def test_assigning_room_clears_previous_remark(self):
         self.room.housekeeping_remark = "Old submission note"
