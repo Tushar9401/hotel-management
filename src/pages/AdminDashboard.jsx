@@ -136,7 +136,7 @@ export default function AdminDashboard() {
           </button>
           <button
             className="button primary"
-            onClick={() => navigate("/admin/assignments")}
+            onClick={() => navigate("/dashboard/assignments")}
             disabled={!assignableRooms.length}
           >
             <Plus size={18} /> Assign room

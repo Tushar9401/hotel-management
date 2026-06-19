@@ -53,7 +53,7 @@ export default function AdminStaff() {
       title="Housekeeping staff"
       subtitle="See today’s workload and keep assignments balanced across the team."
       action={
-        <button className="button primary" onClick={() => navigate("/admin/assignments")}>
+        <button className="button primary" onClick={() => navigate("/dashboard/assignments")}>
           <Plus size={18} /> Assign a room
         </button>
       }
@@ -134,7 +134,7 @@ export default function AdminStaff() {
 
               <button
                 className="button secondary full"
-                onClick={() => navigate("/admin/assignments")}
+                onClick={() => navigate("/dashboard/assignments")}
               >
                 Manage assignments
               </button>

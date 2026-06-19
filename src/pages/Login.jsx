@@ -13,7 +13,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
 
   if (user) {
-    return <Navigate to={user.role === "admin" ? "/admin" : "/staff"} replace />;
+    return <Navigate to={user.role === "admin" ? "/dashboard" : "/staff"} replace />;
   }
 
   const handleSubmit = async (event) => {
@@ -22,7 +22,7 @@ export default function Login() {
     setError("");
     try {
       const authenticatedUser = await login(username.trim(), password);
-      navigate(authenticatedUser.role === "admin" ? "/admin" : "/staff");
+      navigate(authenticatedUser.role === "admin" ? "/dashboard" : "/staff");
     } catch (requestError) {
       setError(requestError.message);
     } finally {

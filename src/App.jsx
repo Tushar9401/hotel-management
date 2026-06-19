@@ -15,9 +15,9 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
-      <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-      <Route path="/admin/assignments" element={<ProtectedRoute role="admin"><AdminAssignments /></ProtectedRoute>} />
-      <Route path="/admin/staff" element={<ProtectedRoute role="admin"><AdminStaff /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/dashboard/assignments" element={<ProtectedRoute role="admin"><AdminAssignments /></ProtectedRoute>} />
+      <Route path="/dashboard/staff" element={<ProtectedRoute role="admin"><AdminStaff /></ProtectedRoute>} />
       <Route path="/staff" element={<ProtectedRoute role="room_service"><StaffDashboard /></ProtectedRoute>} />
       <Route path="/staff/room/:roomId" element={<ProtectedRoute role="room_service"><RoomChecklist /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -29,7 +29,7 @@ function ProtectedRoute({ role, children }) {
   const { user } = useHotel();
   if (!user) return <Navigate to="/" replace />;
   if (user.role !== role) {
-    return <Navigate to={user.role === "admin" ? "/admin" : "/staff"} replace />;
+    return <Navigate to={user.role === "admin" ? "/dashboard" : "/staff"} replace />;
   }
   return children;
 }

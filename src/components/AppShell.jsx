@@ -23,13 +23,13 @@ export default function AppShell({ role, title, subtitle, children, action }) {
 
   const navItems = isAdmin
     ? [
-        { label: "Overview", icon: LayoutDashboard, path: "/admin" },
+        { label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
         {
           label: "Room assignments",
           icon: ClipboardCheck,
-          path: "/admin/assignments",
+          path: "/dashboard/assignments",
         },
-        { label: "Staff", icon: Users, path: "/admin/staff" },
+        { label: "Staff", icon: Users, path: "/dashboard/staff" },
       ]
     : [{ label: "My rooms", icon: ClipboardCheck, path: "/staff" }];
 
